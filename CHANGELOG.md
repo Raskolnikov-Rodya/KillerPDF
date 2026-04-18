@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-04-18
+
+### Fixed
+- Maximize no longer covers the Windows taskbar. Added a `WM_GETMINMAXINFO` hook so the frameless window clamps to the monitor's work area (multi-monitor aware).
+- Two `CS8602` nullability warnings in the font-name cleanup path.
+
 ## [1.1.0] - 2026-04-16
 
 ### Changed
@@ -22,6 +28,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 
 _Historical entries to be backfilled._
 
-[Unreleased]: https://github.com/SteveTheKiller/KillerPDF/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/SteveTheKiller/KillerPDF/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/SteveTheKiller/KillerPDF/releases/tag/v1.1.1
 [1.1.0]: https://github.com/SteveTheKiller/KillerPDF/releases/tag/v1.1.0
 [1.0.1]: https://github.com/SteveTheKiller/KillerPDF/releases/tag/v1.0.1

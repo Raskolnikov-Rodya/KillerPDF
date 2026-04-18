@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
@@ -91,6 +93,81 @@ namespace KillerPDF
             LoadSignatures();
             BuildContextMenu();
             SetTool(EditTool.Select);
+            SourceInitialized += MainWindow_SourceInitialized;
+        }
+
+        // ============================================================
+        // Maximize-respects-taskbar fix (WindowStyle=None needs WM_GETMINMAXINFO)
+        // ============================================================
+
+        private void MainWindow_SourceInitialized(object? sender, EventArgs e)
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+        }
+
+        private const int WM_GETMINMAXINFO = 0x0024;
+        private const uint MONITOR_DEFAULTTONEAREST = 0x00000002;
+
+        private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (msg == WM_GETMINMAXINFO)
+            {
+                WmGetMinMaxInfo(hwnd, lParam);
+                handled = true;
+            }
+            return IntPtr.Zero;
+        }
+
+        private static void WmGetMinMaxInfo(IntPtr hwnd, IntPtr lParam)
+        {
+            var mmi = Marshal.PtrToStructure<MINMAXINFO>(lParam);
+            IntPtr monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+            if (monitor != IntPtr.Zero)
+            {
+                var info = new MONITORINFO { cbSize = Marshal.SizeOf(typeof(MONITORINFO)) };
+                GetMonitorInfo(monitor, ref info);
+                RECT work = info.rcWork;
+                RECT mon = info.rcMonitor;
+                mmi.ptMaxPosition.x = Math.Abs(work.left - mon.left);
+                mmi.ptMaxPosition.y = Math.Abs(work.top - mon.top);
+                mmi.ptMaxSize.x = Math.Abs(work.right - work.left);
+                mmi.ptMaxSize.y = Math.Abs(work.bottom - work.top);
+                mmi.ptMaxTrackSize.x = mmi.ptMaxSize.x;
+                mmi.ptMaxTrackSize.y = mmi.ptMaxSize.y;
+                Marshal.StructureToPtr(mmi, lParam, true);
+            }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr handle, uint flags);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct POINT { public int x; public int y; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT { public int left, top, right, bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MINMAXINFO
+        {
+            public POINT ptReserved;
+            public POINT ptMaxSize;
+            public POINT ptMaxPosition;
+            public POINT ptMinTrackSize;
+            public POINT ptMaxTrackSize;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
         }
 
         // ============================================================
@@ -1760,15 +1837,16 @@ namespace KillerPDF
                         }
                         if (!string.IsNullOrEmpty(rawFont))
                         {
+                            string fontStr = rawFont!;
                             // Strip PDF subset prefix (e.g. "ABCDEF+FontName" -> "FontName")
-                            if (rawFont.Contains('+'))
-                                rawFont = rawFont.Substring(rawFont.IndexOf('+') + 1);
+                            if (fontStr.Contains('+'))
+                                fontStr = fontStr.Substring(fontStr.IndexOf('+') + 1);
                             // Clean common suffixes
-                            rawFont = rawFont.Replace(",Bold", "").Replace(",Italic", "")
+                            fontStr = fontStr.Replace(",Bold", "").Replace(",Italic", "")
                                              .Replace("-Bold", "").Replace("-Italic", "")
                                              .Replace("-Roman", "").Replace("-Regular", "");
-                            if (!string.IsNullOrWhiteSpace(rawFont))
-                                fontName = rawFont;
+                            if (!string.IsNullOrWhiteSpace(fontStr))
+                                fontName = fontStr;
                         }
                     }
                 }
