@@ -1,5 +1,8 @@
 # KillerPDF
 
+[![oosmetrics](https://api.oosmetrics.com/api/v1/badge/achievement/bf0a2893-0ce5-4fc8-a6cc-084ad0722ed2.svg)](https://oosmetrics.com/repo/SteveTheKiller/KillerPDF)
+[![oosmetrics](https://api.oosmetrics.com/api/v1/badge/achievement/dd592456-00ad-445d-b97b-21e44ee4b44e.svg)](https://oosmetrics.com/repo/SteveTheKiller/KillerPDF)
+
 Portable PDF editor for field techs. View, annotate, merge, split, edit text, draw, sign, and print without an Adobe subscription or a phone-home. Single Windows EXE, ~6 MB zipped, no runtime install required.
 
 Part of [killertools.net](https://killertools.net).
