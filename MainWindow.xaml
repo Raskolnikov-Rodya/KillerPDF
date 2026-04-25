@@ -277,6 +277,7 @@
                     <Button Content="&#xE74B;" Style="{StaticResource ToolbarButton}" Click="MoveDown_Click" ToolTip="Move Page Down"/>
                     <Rectangle Width="1" Fill="{StaticResource BorderDim}" Margin="4,6"/>
                     <Button Content="&#xE74E;" Style="{StaticResource ToolbarButtonAccent}" Click="SaveAs_Click" ToolTip="Save As"/>
+                    <Button Content="&#xE8B9;" Style="{StaticResource ToolbarButton}" Click="SaveFlattened_Click" ToolTip="Save Flattened PDF (rasterize all pages — fully uneditable)"/>
                     <Button Content="&#xE749;" Style="{StaticResource ToolbarButton}" Click="Print_Click" ToolTip="Print (Ctrl+P)"/>
                 </StackPanel>
                 <!-- Edit tools -->

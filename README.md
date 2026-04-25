@@ -3,7 +3,7 @@
 [![oosmetrics](https://api.oosmetrics.com/api/v1/badge/achievement/bf0a2893-0ce5-4fc8-a6cc-084ad0722ed2.svg)](https://oosmetrics.com/repo/SteveTheKiller/KillerPDF)
 [![oosmetrics](https://api.oosmetrics.com/api/v1/badge/achievement/dd592456-00ad-445d-b97b-21e44ee4b44e.svg)](https://oosmetrics.com/repo/SteveTheKiller/KillerPDF)
 
-Portable PDF editor for field techs. View, annotate, merge, split, edit text, draw, sign, and print without an Adobe subscription or a phone-home. Single Windows EXE, ~6 MB zipped, no runtime install required.
+PDF editor for field techs. View, annotate, merge, split, edit text, draw, sign, print, flatten, and open password-protected PDFs without an Adobe subscription or a phone-home. Install or run portable. Single Windows EXE, ~6 MB zipped, no runtime install required.
 
 Part of [killertools.net](https://killertools.net).
 
@@ -16,7 +16,9 @@ Part of [killertools.net](https://killertools.net).
 - Draw and save reusable signatures, click to place anywhere on a page
 - Full-text search with result highlighting, drag-select to copy text
 - Print with annotations flattened into the output
-- No installer, no runtime install, no admin rights, no config files, no account
+- Save Flattened PDF: rasterizes every page at 150 DPI via PDFium into a fully uneditable document
+- Password-protected PDF support: prompts for password instead of erroring, decrypted copy held in temp for the session
+- Self-installing EXE: Install or Run dialog on first launch, installs per-user to %LOCALAPPDATA% (no UAC), registers as PDF file handler, adds Start Menu shortcut, self-uninstalls cleanly
 
 ## Screenshots
 
@@ -32,7 +34,7 @@ Part of [killertools.net](https://killertools.net).
 ## Download
 
 - Prebuilt binary: <https://github.com/SteveTheKiller/KillerPDF/releases/latest/download/KillerPDF.zip>
-- Source (GPL3 corresponding source for this release): <https://github.com/SteveTheKiller/KillerPDF/releases/download/v1.1.1/KillerPDF-1.1.1-src.zip>
+- Source (GPL3 corresponding source for this release): <https://github.com/SteveTheKiller/KillerPDF/releases/download/v1.2.0/KillerPDF-1.2.0-src.zip>
 
 ## Build from source
 

@@ -6,6 +6,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-04-24
+
+### Added
+- Self-installing EXE. Running the downloaded binary now shows an Install / Run dialog. Install copies the EXE to `%LOCALAPPDATA%\Programs\KillerPDF\` (no UAC required), creates Start Menu and optional Desktop shortcuts, registers as a PDF file handler, and adds an uninstall entry to Add/Remove Programs. Uninstall self-deletes via a deferred batch file. Running a newer version from outside the install path shows an Update prompt instead.
+- Command-line file argument support so file associations work: `KillerPDF.exe "file.pdf"` opens the file directly.
+- Password-protected PDF support. Opening an encrypted PDF now prompts for the password instead of showing a generic error. The decrypted copy is held in a temp file for the session so all rendering and editing works normally.
+- Save Flattened PDF (photo icon in toolbar). Rasterizes every page at 150 DPI via PDFium and writes them as embedded images into a new PDF, producing a fully uneditable document. Pending annotations are burned in before rasterization.
+
 ## [1.1.1] - 2026-04-18
 
 ### Fixed
@@ -28,7 +36,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and this
 
 _Historical entries to be backfilled._
 
-[Unreleased]: https://github.com/SteveTheKiller/KillerPDF/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/SteveTheKiller/KillerPDF/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/SteveTheKiller/KillerPDF/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/SteveTheKiller/KillerPDF/releases/tag/v1.1.1
 [1.1.0]: https://github.com/SteveTheKiller/KillerPDF/releases/tag/v1.1.0
 [1.0.1]: https://github.com/SteveTheKiller/KillerPDF/releases/tag/v1.0.1

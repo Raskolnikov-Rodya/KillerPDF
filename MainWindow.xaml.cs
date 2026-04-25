@@ -94,6 +94,14 @@ namespace KillerPDF
             BuildContextMenu();
             SetTool(EditTool.Select);
             SourceInitialized += MainWindow_SourceInitialized;
+
+            // Open a file passed via command-line / file association (e.g. double-clicking a .pdf)
+            Loaded += (_, _) =>
+            {
+                var args = Environment.GetCommandLineArgs();
+                if (args.Length > 1 && System.IO.File.Exists(args[1]))
+                    OpenFile(args[1]);
+            };
         }
 
         // ============================================================
@@ -231,20 +239,88 @@ namespace KillerPDF
                 if (_doc is not null) { _doc.Close(); _doc = null; }
                 _doc = PdfReader.Open(path, PdfDocumentOpenMode.Modify);
                 _currentFile = path;
-                FileNameLabel.Text = System.IO.Path.GetFileName(path);
-                _annotations.Clear();
-                _renderDims.Clear();
-                ClearSelection();
-                RefreshPageList();
-                DropZone.Visibility = Visibility.Collapsed;
-                PagePreviewPanel.Visibility = Visibility.Visible;
-                if (_doc.PageCount > 0) PageList.SelectedIndex = 0;
-                SetStatus($"Opened {System.IO.Path.GetFileName(path)} - {_doc.PageCount} page(s)");
+                FinishOpenFile(path, path);
+            }
+            catch (Exception ex) when (IsPasswordException(ex))
+            {
+                string? pw = PromptForPassword(path);
+                if (pw is null) return;
+                try
+                {
+                    if (_doc is not null) { _doc.Close(); _doc = null; }
+                    _doc = PdfReader.Open(path, pw, PdfDocumentOpenMode.Modify);
+                    // Save a decrypted temp copy so Docnet can render without needing the password
+                    var tempDec = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"killerpdf_dec_{Guid.NewGuid():N}.pdf");
+                    _doc.Save(tempDec);
+                    _doc.Close();
+                    _doc = PdfReader.Open(tempDec, PdfDocumentOpenMode.Modify);
+                    _currentFile = tempDec;
+                    FinishOpenFile(path, tempDec);
+                }
+                catch (Exception ex2)
+                {
+                    MessageBox.Show($"Failed to open PDF:\n{ex2.Message}", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Failed to open PDF:\n{ex.Message}", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void FinishOpenFile(string displayPath, string workingPath)
+        {
+            _currentFile = workingPath;
+            FileNameLabel.Text = System.IO.Path.GetFileName(displayPath);
+            _annotations.Clear();
+            _renderDims.Clear();
+            ClearSelection();
+            RefreshPageList();
+            DropZone.Visibility = Visibility.Collapsed;
+            PagePreviewPanel.Visibility = Visibility.Visible;
+            if (_doc!.PageCount > 0) PageList.SelectedIndex = 0;
+            SetStatus($"Opened {System.IO.Path.GetFileName(displayPath)} - {_doc.PageCount} page(s)");
+        }
+
+        private static bool IsPasswordException(Exception ex) =>
+            ex.Message.IndexOf("password", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            ex.Message.IndexOf("protected", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            ex.Message.IndexOf("encrypted", StringComparison.OrdinalIgnoreCase) >= 0;
+
+        private string? PromptForPassword(string filename)
+        {
+            string? result = null;
+            var win = new Window
+            {
+                Title = "Password Required",
+                Width = 360,
+                Height = 165,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize,
+                Background = new SolidColorBrush(Color.FromRgb(0x22, 0x22, 0x22))
+            };
+            var sp = new StackPanel { Margin = new Thickness(20, 16, 20, 16) };
+            sp.Children.Add(new TextBlock
+            {
+                Text = $"\"{System.IO.Path.GetFileName(filename)}\" is password protected.",
+                Foreground = Brushes.White,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 10)
+            });
+            var pwBox = new PasswordBox { Margin = new Thickness(0, 0, 0, 14) };
+            sp.Children.Add(pwBox);
+            var btnRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+            var okBtn = new Button { Content = "Open", Width = 76, Margin = new Thickness(0, 0, 8, 0) };
+            var cancelBtn = new Button { Content = "Cancel", Width = 76 };
+            okBtn.Click += (s, ev) => { result = pwBox.Password; win.DialogResult = true; };
+            cancelBtn.Click += (s, ev) => { win.DialogResult = false; };
+            pwBox.KeyDown += (s, ev) => { if (ev.Key == Key.Enter) { result = pwBox.Password; win.DialogResult = true; } };
+            btnRow.Children.Add(okBtn);
+            btnRow.Children.Add(cancelBtn);
+            sp.Children.Add(btnRow);
+            win.Content = sp;
+            return win.ShowDialog() == true ? result : null;
         }
 
         private void RefreshPageList()
@@ -2413,6 +2489,92 @@ namespace KillerPDF
             catch (Exception ex)
             {
                 MessageBox.Show($"Save failed:\n{ex.Message}", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void SaveFlattened_Click(object sender, RoutedEventArgs e)
+        {
+            if (_doc is null || _currentFile is null) { MessageBox.Show("Open a PDF first.", "KillerPDF"); return; }
+            CommitActiveTextBox();
+            var dlg = new SaveFileDialog { Filter = "PDF files|*.pdf", Title = "Save Flattened PDF" };
+            if (dlg.ShowDialog() != true) return;
+            SetStatus("Flattening...");
+            try
+            {
+                // Burn any pending annotations into a temp source for rasterization
+                string sourcePath;
+                bool hasAnnotations = _annotations.Values.Any(list => list.Count > 0);
+                if (hasAnnotations)
+                {
+                    var tempClean = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"killerpdf_clean_{Guid.NewGuid():N}.pdf");
+                    var tempBurned = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"killerpdf_burned_{Guid.NewGuid():N}.pdf");
+                    _doc.Save(tempClean);
+                    DrawAnnotationsOnDocument();
+                    _doc.Save(tempBurned);
+                    _doc.Close();
+                    _doc = PdfReader.Open(tempClean, PdfDocumentOpenMode.Modify);
+                    _currentFile = tempClean;
+                    sourcePath = tempBurned;
+                }
+                else
+                {
+                    var temp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"killerpdf_src_{Guid.NewGuid():N}.pdf");
+                    _doc.Save(temp);
+                    sourcePath = temp;
+                }
+
+                int pageCount = _doc.PageCount;
+
+                // Calculate max render dimensions across all pages at 150 DPI
+                int maxW = 1, maxH = 1;
+                for (int i = 0; i < pageCount; i++)
+                {
+                    var p = _doc.Pages[i];
+                    int pw = (int)(p.Width.Point * 150 / 72.0);
+                    int ph = (int)(p.Height.Point * 150 / 72.0);
+                    if (pw > maxW) maxW = pw;
+                    if (ph > maxH) maxH = ph;
+                }
+
+                using var outDoc = new PdfDocument();
+                using (var docReader = DocLib.Instance.GetDocReader(sourcePath, new PageDimensions(maxW, maxH)))
+                {
+                    for (int i = 0; i < pageCount; i++)
+                    {
+                        using var pr = docReader.GetPageReader(i);
+                        var bgra = pr.GetImage();
+                        int rw = pr.GetPageWidth();
+                        int rh = pr.GetPageHeight();
+
+                        // Encode rendered BGRA pixels to PNG in memory
+                        var bmp = new WriteableBitmap(rw, rh, 96, 96, PixelFormats.Bgra32, null);
+                        bmp.WritePixels(new Int32Rect(0, 0, rw, rh), bgra, rw * 4, 0);
+                        byte[] pngBytes;
+                        using (var ms = new MemoryStream())
+                        {
+                            var enc = new PngBitmapEncoder();
+                            enc.Frames.Add(BitmapFrame.Create(bmp));
+                            enc.Save(ms);
+                            pngBytes = ms.ToArray();
+                        }
+
+                        // Add page at original PDF dimensions, fill with rasterized image
+                        var origPage = _doc.Pages[i];
+                        var newPage = outDoc.AddPage();
+                        newPage.Width = origPage.Width;
+                        newPage.Height = origPage.Height;
+                        using var xi = XImage.FromStream(() => new MemoryStream(pngBytes));
+                        using var gfx = XGraphics.FromPdfPage(newPage);
+                        gfx.DrawImage(xi, 0, 0, newPage.Width.Point, newPage.Height.Point);
+                    }
+                }
+
+                outDoc.Save(dlg.FileName);
+                SetStatus($"Flattened PDF saved to {System.IO.Path.GetFileName(dlg.FileName)}");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Flatten failed:\n{ex.Message}", "KillerPDF", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
