@@ -22,6 +22,8 @@ Part of [killertools.net](https://killertools.net).
 
 ## Screenshots
 
+![KillerPDF installer](screenshots/installer.png)
+
 ![KillerPDF main view](screenshots/main-view.png)
 
 ![Highlighting and annotation](screenshots/highlight.png)
